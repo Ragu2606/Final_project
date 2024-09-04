@@ -1,0 +1,56 @@
+# this lambda code will be triggered when new file added in to s3 bucket and it will store that file to RDS.
+import json
+import boto3
+import pymysql
+import csv
+import os
+
+# Retrieve configuration from environment variables
+rds_host = os.environ['RDS_HOST']
+username = os.environ['RDS_USERNAME']
+password = os.environ['RDS_PASSWORD']
+db_name = os.environ['RDS_DB_NAME']
+table_name = os.environ['RDS_TABLE_NAME']
+
+def lambda_handler(event, context):
+    # Get the S3 bucket and object key from the event
+    bucket = event['Records'][0]['s3']['bucket']['name']
+    key = event['Records'][0]['s3']['object']['key']
+    
+    # Download the file from S3
+    s3_client = boto3.client('s3')
+    s3_client.download_file(bucket, key, '/tmp/data.csv')
+    
+    # Connect to the RDS MySQL database
+    connection = pymysql.connect(host=rds_host, user=username, password=password, db=db_name, connect_timeout=5)
+    
+    try:
+        with connection.cursor() as cursor:
+            # Open the CSV file and read data
+            with open('/tmp/data.csv', 'r') as f:
+                reader = csv.reader(f)
+                header = next(reader)  # Skip the header row
+                
+                # Prepare SQL insert statement
+                sql = f"INSERT INTO {table_name} (Store, Dept, Date, Weekly_Sales, IsHoliday) VALUES (%s, %s, %s, %s, %s)"
+                
+                # Insert data into the RDS table
+                for row in reader:
+                    cursor.execute(sql, row)
+                    
+                connection.commit()
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps(f"Failed to load data into RDS: {str(e)}")
+        }
+    
+    finally:
+        connection.close()
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Data loaded successfully into RDS')
+    }
