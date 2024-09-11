@@ -1,0 +1,28 @@
+import os
+import boto3
+from botocore.exceptions import NoCredentialsError
+
+# Initialize the S3 client
+s3 = boto3.client('s3')
+
+def upload_folder_to_s3(local_folder, bucket_name, s3_folder):
+    for root, dirs, files in os.walk(local_folder):
+        for file in files:
+            local_path = os.path.join(root, file)
+            relative_path = os.path.relpath(local_path, local_folder)
+            s3_path = os.path.join(s3_folder, relative_path)
+
+            try:
+                s3.upload_file(local_path, bucket_name, s3_path)
+                print(f'Successfully uploaded {s3_path} to {bucket_name}')
+            except FileNotFoundError:
+                print(f'File {local_path} not found.')
+            except NoCredentialsError:
+                print('Credentials not available.')
+
+if __name__ == "__main__":
+    local_folder = '/home/ragu/Desktop/Store_data'
+    bucket_name = 'dmartsales'
+    s3_folder = 'sales_data/'
+
+    upload_folder_to_s3(local_folder, bucket_name, s3_folder)
