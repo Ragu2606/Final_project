@@ -126,9 +126,3 @@ weekly_sales_without_offers_df.show()
 
 # Stop the Spark session
 spark.stop()
-# Show results
-weekly_performance_with_offers_df.show()
-weekly_performance_without_offers_df.show()
-
-# Stop the Spark session
-spark.stop()
